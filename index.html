@@ -130,6 +130,7 @@
   <textarea id="entry" placeholder="went to Walmart today, got velcro strips and bananas"></textarea>
 
   <div class="row">
+    <button id="mic" type="button">Speak</button>
     <button id="save">Save purchase</button>
     <span class="status" id="status"></span>
   </div>
@@ -194,6 +195,49 @@
   }
 
   button.addEventListener("click", save);
+
+  const mic = document.getElementById("mic");
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (!SR) {
+    mic.disabled = true;
+    mic.textContent = "Speech not supported";
+  } else {
+    const recog = new SR();
+    recog.lang = "en-US";
+    recog.interimResults = false;
+    recog.continuous = false;
+    let listening = false;
+
+    mic.addEventListener("click", () => {
+      if (listening) { recog.stop(); return; }
+      recog.start();
+    });
+
+    recog.addEventListener("start", () => {
+      listening = true;
+      mic.textContent = "Stop";
+      status.className = "status";
+      status.textContent = "Listening…";
+    });
+
+    recog.addEventListener("result", (e) => {
+      const said = e.results[0][0].transcript;
+      entry.value = entry.value ? entry.value + " " + said : said;
+      status.textContent = "Got it. Edit if needed, then save.";
+    });
+
+    recog.addEventListener("error", (e) => {
+      status.className = "status error";
+      status.textContent = "Mic error: " + e.error;
+    });
+
+    recog.addEventListener("end", () => {
+      listening = false;
+      mic.textContent = "Speak";
+    });
+  }
+  
 </script>
 </main>
 </body>
