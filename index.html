@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Do I Have It</title>
+<style>
+  :root {
+    --paper: #F1F3F1;
+    --ink: #16201C;
+    --ink-soft: #5A6862;
+    --moss: #2F5D50;
+    --rule: #D3DAD6;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 2.5rem 1.25rem 4rem;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: Georgia, "Iowan Old Style", "Times New Roman", serif;
+    line-height: 1.6;
+  }
+
+  main {
+    max-width: 34rem;
+    margin: 0 auto;
+  }
+
+  h1 {
+    font-size: clamp(2.4rem, 9vw, 3.4rem);
+    font-weight: 400;
+    line-height: 1.05;
+    margin: 0 0 0.4rem;
+    letter-spacing: -0.015em;
+  }
+
+  .sub {
+    margin: 0 0 2.5rem;
+    color: var(--ink-soft);
+    font-size: 1.05rem;
+    max-width: 28rem;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 8rem;
+    padding: 1rem;
+    font: inherit;
+    color: var(--ink);
+    background: #FBFCFB;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    resize: vertical;
+  }
+
+  textarea:focus {
+    outline: 2px solid var(--moss);
+    outline-offset: 1px;
+    border-color: transparent;
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+
+  button {
+    font: inherit;
+    padding: 0.65rem 1.5rem;
+    color: #FBFCFB;
+    background: var(--moss);
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+
+  button:hover { background: #26493F; }
+  button:disabled { opacity: 0.5; cursor: default; }
+  button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+  .status {
+    font-size: 0.95rem;
+    color: var(--ink-soft);
+  }
+
+  .status.error { color: #8C2F22; }
+
+  section {
+    margin-top: 3rem;
+    border-top: 1px solid var(--rule);
+    padding-top: 1.5rem;
+  }
+
+  h2 {
+    font-size: 1rem;
+    font-weight: 400;
+    color: var(--ink-soft);
+    margin: 0 0 1rem;
+  }
+
+  ul { list-style: none; margin: 0; padding: 0; }
+
+  li {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  li:last-child { border-bottom: none; }
+
+  .time {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+  }
+
+  .empty { color: var(--ink-soft); margin: 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Do I have it?</h1>
+  <p class="sub">Tell it what you bought. It remembers, so you don't buy the velcro twice.</p>
+
+  <label for="entry" class="status">What did you buy?</label>
+  <textarea id="entry" placeholder="went to Walmart today, got velcro strips and bananas"></textarea>
+
+  <div class="row">
+    <button id="save">Save purchase</button>
+    <span class="status" id="status"></span>
+  </div>
+
+  <section>
+    <h2>Saved this session</h2>
+    <p class="empty" id="empty">Nothing yet.</p>
+    <ul id="list"></ul>
+  </section>
+</main>
+
+<script>
+  const API = "https://iqbuwsawy7.execute-api.us-east-2.amazonaws.com/purchase";
+
+  const entry = document.getElementById("entry");
+  const button = document.getElementById("save");
+  const status = document.getElementById("status");
+  const list = document.getElementById("list");
+  const empty = document.getElementById("empty");
+
+  async function save() {
+    const text = entry.value.trim();
+    if (!text) {
+      status.textContent = "Type something first.";
+      status.className = "status error";
+      return;
+    }
+
+    button.disabled = true;
+    status.className = "status";
+    status.textContent = "Saving…";
+
+    try {
+      const res = await fetch(API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ raw_text: text })
+      });
+
+      if (!res.ok) throw new Error("Server returned " + res.status);
+
+      const data = await res.json();
+      const saved = data.saved || {};
+
+      const li = document.createElement("li");
+      li.textContent = saved.raw_text || text;
+      const time = document.createElement("span");
+      time.className = "time";
+      time.textContent = new Date(saved.created_at || Date.now()).toLocaleString();
+      li.appendChild(time);
+      list.prepend(li);
+      empty.hidden = true;
+
+      entry.value = "";
+      status.textContent = "Saved.";
+    } catch (err) {
+      status.className = "status error";
+      status.textContent = "Didn't save: " + err.message + ". Try again.";
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  button.addEventListener("click", save);
+</script>
+</main>
+</body>
+</html>
