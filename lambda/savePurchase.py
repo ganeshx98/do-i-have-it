@@ -6,7 +6,8 @@ import boto3
 from datetime import datetime, timezone
 
 dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table('purchaseTracker')
+purchases = dynamodb.Table('purchaseTracker')
+items = dynamodb.Table('items')
 
 API_KEY = os.environ['ANTHROPIC_API_KEY']
 
@@ -52,6 +53,32 @@ def parse_items(text):
     return json.loads(reply)
 
 
+def normalize(name):
+    return " ".join(name.lower().split())
+
+
+def upsert_item(key, name, category, now):
+    existing = items.get_item(Key={'item_key': key}).get('Item')
+
+    if existing:
+        items.update_item(
+            Key={'item_key': key},
+            UpdateExpression='SET purchase_count = purchase_count + :one, last_purchased = :now',
+            ExpressionAttributeValues={':one': 1, ':now': now}
+        )
+        return False
+
+    items.put_item(Item={
+        'item_key': key,
+        'display_name': name,
+        'category': category,
+        'purchase_count': 1,
+        'first_purchased': now,
+        'last_purchased': now
+    })
+    return True
+
+ 
 def lambda_handler(event, context):
     body = event.get('body')
     if isinstance(body, str):
@@ -64,24 +91,34 @@ def lambda_handler(event, context):
         return {'statusCode': 400, 'body': json.dumps({'error': 'raw_text is required'})}
 
     try:
-        items = parse_items(raw_text)
+        parsed = parse_items(raw_text)
     except Exception as e:
         return {'statusCode': 502, 'body': json.dumps({'error': 'parse failed: ' + str(e)})}
 
     now = datetime.now(timezone.utc).isoformat()
     saved = []
 
-    for it in items:
+    for it in parsed:
+        name = it.get('name')
+        if not name:
+            continue
+
+        key = normalize(name)
+        is_new = upsert_item(key, name, it.get('category'), now)
+
         record = {
             'purchase_id': str(uuid.uuid4()),
-            'item_name': it.get('name'),
+            'item_key': key,
+            'item_name': name,
             'category': it.get('category'),
             'quantity': str(it.get('quantity')) if it.get('quantity') is not None else None,
             'store': it.get('store'),
             'raw_text': raw_text,
             'created_at': now
         }
-        table.put_item(Item=record)
+        purchases.put_item(Item=record)
+
+        record['first_time'] = is_new
         saved.append(record)
 
     return {'statusCode': 200, 'body': json.dumps({'saved': saved})}
