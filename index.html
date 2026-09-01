@@ -173,19 +173,25 @@
       if (!res.ok) throw new Error("Server returned " + res.status);
 
       const data = await res.json();
-      const saved = data.saved || {};
+      const saved = data.saved || [];
 
-      const li = document.createElement("li");
-      li.textContent = saved.raw_text || text;
-      const time = document.createElement("span");
-      time.className = "time";
-      time.textContent = new Date(saved.created_at || Date.now()).toLocaleString();
-      li.appendChild(time);
-      list.prepend(li);
-      empty.hidden = true;
+      saved.forEach(rec => {
+        const li = document.createElement("li");
+        li.textContent = rec.item_name;
+        const meta = document.createElement("span");
+        meta.className = "time";
+        const bits = [rec.category];
+        if (rec.store) bits.push(rec.store);
+        bits.push(new Date(rec.created_at).toLocaleString());
+        meta.textContent = bits.join(" · ");
+        li.appendChild(meta);
+        list.prepend(li);
+      });
+
+      if (saved.length) empty.hidden = true;
 
       entry.value = "";
-      status.textContent = "Saved.";
+      status.textContent = "Saved " + saved.length + (saved.length === 1 ? " item." : " items.");
     } catch (err) {
       status.className = "status error";
       status.textContent = "Didn't save: " + err.message + ". Try again.";
@@ -237,7 +243,7 @@
       mic.textContent = "Speak";
     });
   }
-  
+
 </script>
 </main>
 </body>
