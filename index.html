@@ -11,49 +11,111 @@
     --ink-soft: #5A6862;
     --moss: #2F5D50;
     --rule: #D3DAD6;
+    --alarm: #8C2F22;
+    --bubble-user: #DDE5E1;
+    --bubble-bot: #FBFCFB;
   }
 
   * { box-sizing: border-box; }
 
+  html, body { height: 100%; }
+
   body {
     margin: 0;
-    padding: 2.5rem 1.25rem 4rem;
     background: var(--paper);
     color: var(--ink);
     font-family: Georgia, "Iowan Old Style", "Times New Roman", serif;
-    line-height: 1.6;
+    line-height: 1.55;
+    display: flex;
+    flex-direction: column;
   }
 
-  main {
+  header {
+    padding: 1.5rem 1.25rem 0.75rem;
     max-width: 34rem;
+    width: 100%;
     margin: 0 auto;
   }
 
   h1 {
-    font-size: clamp(2.4rem, 9vw, 3.4rem);
+    font-size: 2rem;
     font-weight: 400;
     line-height: 1.05;
-    margin: 0 0 0.4rem;
+    margin: 0;
     letter-spacing: -0.015em;
   }
 
   .sub {
-    margin: 0 0 2.5rem;
+    margin: 0.25rem 0 0;
     color: var(--ink-soft);
-    font-size: 1.05rem;
-    max-width: 28rem;
+    font-size: 0.95rem;
+  }
+
+  #log {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.5rem 1.25rem 1rem;
+    max-width: 34rem;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  .msg {
+    max-width: 85%;
+    padding: 0.65rem 0.9rem;
+    border-radius: 12px;
+    margin: 0.5rem 0;
+    white-space: pre-wrap;
+  }
+
+  .msg.user {
+    background: var(--bubble-user);
+    margin-left: auto;
+    border-bottom-right-radius: 3px;
+  }
+
+  .msg.bot {
+    background: var(--bubble-bot);
+    border: 1px solid var(--rule);
+    border-bottom-left-radius: 3px;
+  }
+
+  .msg.error {
+    color: var(--alarm);
+    background: transparent;
+    border: 1px solid var(--alarm);
+  }
+
+  .msg.thinking {
+    color: var(--ink-soft);
+    font-style: italic;
+  }
+
+  footer {
+    border-top: 1px solid var(--rule);
+    padding: 0.75rem 1.25rem 1.25rem;
+    background: var(--paper);
+  }
+
+  .bar {
+    display: flex;
+    gap: 0.5rem;
+    max-width: 34rem;
+    margin: 0 auto;
+    align-items: flex-end;
   }
 
   textarea {
-    width: 100%;
-    min-height: 8rem;
-    padding: 1rem;
+    flex: 1;
+    min-height: 2.75rem;
+    max-height: 8rem;
+    padding: 0.6rem 0.8rem;
     font: inherit;
     color: var(--ink);
     background: #FBFCFB;
     border: 1px solid var(--rule);
     border-radius: 3px;
-    resize: vertical;
+    resize: none;
   }
 
   textarea:focus {
@@ -62,22 +124,15 @@
     border-color: transparent;
   }
 
-  .row {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    margin-top: 1rem;
-    flex-wrap: wrap;
-  }
-
   button {
     font: inherit;
-    padding: 0.65rem 1.5rem;
+    padding: 0.6rem 1.1rem;
     color: #FBFCFB;
     background: var(--moss);
     border: none;
     border-radius: 3px;
     cursor: pointer;
+    white-space: nowrap;
   }
 
   button.secondary {
@@ -86,136 +141,169 @@
     border: 1px solid var(--moss);
   }
 
+  button.listening {
+    background: var(--alarm);
+    color: #FBFCFB;
+    border-color: var(--alarm);
+  }
+
   button:hover { background: #26493F; }
   button.secondary:hover { background: rgba(47, 93, 80, 0.08); }
+  button.listening:hover { background: #6E2419; }
   button:disabled { opacity: 0.5; cursor: default; }
   button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 
-  .status {
-    font-size: 0.95rem;
-    color: var(--ink-soft);
-  }
-
-  .status.error { color: #8C2F22; }
-
-  section {
-    margin-top: 3rem;
-    border-top: 1px solid var(--rule);
-    padding-top: 1.5rem;
-  }
-
-  h2 {
-    font-size: 1rem;
-    font-weight: 400;
-    color: var(--ink-soft);
-    margin: 0 0 1rem;
-  }
-
-  ul { list-style: none; margin: 0; padding: 0; }
-
-  li {
-    padding: 0.75rem 0;
-    border-bottom: 1px solid var(--rule);
-  }
-
-  li:last-child { border-bottom: none; }
-
-  .time {
-    display: block;
+  .hint {
+    max-width: 34rem;
+    margin: 0.5rem auto 0;
     font-size: 0.85rem;
     color: var(--ink-soft);
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
   }
 
-  .empty { color: var(--ink-soft); margin: 0; }
+  .hint label { cursor: pointer; }
 </style>
 </head>
 <body>
-<main>
+<header>
   <h1>Do I have it?</h1>
-  <p class="sub">Tell it what you bought. It remembers, so you don't buy the velcro twice.</p>
+  <p class="sub">Tell it what you bought. Ask before you buy again.</p>
+</header>
 
-  <label for="entry" class="status">What did you buy?</label>
-  <textarea id="entry" placeholder="went to Walmart today, got velcro strips and bananas"></textarea>
+<div id="log"></div>
 
-  <div class="row">
+<footer>
+  <div class="bar">
     <button id="mic" type="button" class="secondary">Speak</button>
-    <button id="save">Save purchase</button>
-    <span class="status" id="status"></span>
+    <textarea id="entry" rows="1" placeholder="I need a screwdriver…"></textarea>
+    <button id="send" type="button">Send</button>
   </div>
-
-  <section>
-    <h2>Saved this session</h2>
-    <p class="empty" id="empty">Nothing yet.</p>
-    <ul id="list"></ul>
-  </section>
-</main>
+  <div class="hint">
+    <span id="status"></span>
+    <label><input type="checkbox" id="speakBack" checked> Read replies aloud</label>
+  </div>
+</footer>
 
 <script>
-  const API = "https://iqbuwsawy7.execute-api.us-east-2.amazonaws.com/purchase";
+  const CHAT_URL = "https://iqbuwsawy7.execute-api.us-east-2.amazonaws.com/chat";
 
+  const log = document.getElementById("log");
   const entry = document.getElementById("entry");
-  const button = document.getElementById("save");
+  const sendBtn = document.getElementById("send");
+  const mic = document.getElementById("mic");
   const status = document.getElementById("status");
-  const list = document.getElementById("list");
-  const empty = document.getElementById("empty");
+  const speakBack = document.getElementById("speakBack");
 
-  async function save() {
-    const text = entry.value.trim();
-    if (!text) {
-      status.textContent = "Type something first.";
-      status.className = "status error";
-      return;
+  // Conversation history sent to the server on every turn.
+  // Only plain user/assistant text is kept; tool calls are resolved server-side.
+  const history = [];
+
+  function addBubble(text, cls) {
+    const div = document.createElement("div");
+    div.className = "msg " + cls;
+    div.textContent = text;
+    log.appendChild(div);
+    log.scrollTop = log.scrollHeight;
+    return div;
+  }
+
+  /* function say(text) {
+    if (!speakBack.checked || !window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "en-US";
+    window.speechSynthesis.speak(u);
+  } */
+
+  const PREFERRED_VOICES = [
+    "Google US English",
+    "Samantha",
+    "Ava",
+    "Allison",
+    "Microsoft Aria Online (Natural) - English (United States)"
+  ];
+
+  function pickVoice() {
+    const voices = window.speechSynthesis.getVoices();
+    for (const name of PREFERRED_VOICES) {
+      const v = voices.find(v => v.name === name);
+      if (v) return v;
     }
+    return voices.find(v => v.lang === "en-US") || null;
+  }
 
-    button.disabled = true;
-    status.className = "status";
-    status.textContent = "Saving…";
+  function say(text) {
+    if (!speakBack.checked || !window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "en-US";
+    u.rate = 1.05;
+    const v = pickVoice();
+    if (v) u.voice = v;
+    window.speechSynthesis.speak(u);
+  }
+
+  // Chrome loads voices asynchronously; this warms the list.
+  if (window.speechSynthesis) {
+    window.speechSynthesis.getVoices();
+    window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+  }
+
+  async function send(textOverride) {
+    const text = (textOverride ?? entry.value).trim();
+    if (!text) return;
+
+    entry.value = "";
+    addBubble(text, "user");
+    history.push({ role: "user", content: text });
+
+    sendBtn.disabled = true;
+    mic.disabled = true;
+    const thinking = addBubble("…", "bot thinking");
 
     try {
-      const res = await fetch(API, {
+      const res = await fetch(CHAT_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ raw_text: text })
+        body: JSON.stringify({ messages: history })
       });
-
       if (!res.ok) throw new Error("Server returned " + res.status);
 
       const data = await res.json();
-      const saved = data.saved || [];
+      const reply = data.reply || "(no reply)";
 
-      saved.forEach(rec => {
-        const li = document.createElement("li");
-        li.textContent = rec.item_name;
-        const meta = document.createElement("span");
-        meta.className = "time";
-        const bits = [rec.category];
-        if (rec.store) bits.push(rec.store);
-        bits.push(new Date(rec.created_at).toLocaleString());
-        meta.textContent = bits.join(" · ");
-        li.appendChild(meta);
-        list.prepend(li);
-      });
-
-      if (saved.length) empty.hidden = true;
-
-      entry.value = "";
-      status.textContent = "Saved " + saved.length + (saved.length === 1 ? " item." : " items.");
+      thinking.remove();
+      addBubble(reply, "bot");
+      history.push({ role: "assistant", content: reply });
+      say(reply);
     } catch (err) {
-      status.className = "status error";
-      status.textContent = "Didn't save: " + err.message + ". Try again.";
+      thinking.remove();
+      history.pop();
+      addBubble("Something went wrong: " + err.message, "msg error");
     } finally {
-      button.disabled = false;
+      sendBtn.disabled = false;
+      mic.disabled = false;
+      entry.focus();
     }
   }
 
-  button.addEventListener("click", save);
+  sendBtn.addEventListener("click", () => send());
 
-  const mic = document.getElementById("mic");
+  entry.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      send();
+    }
+  });
+
+  // Voice: press Speak, talk, it sends automatically when you pause.
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 
   if (!SR) {
     mic.disabled = true;
-    mic.textContent = "Speech not supported";
+    mic.textContent = "No mic";
   } else {
     const recog = new SR();
     recog.lang = "en-US";
@@ -225,32 +313,36 @@
 
     mic.addEventListener("click", () => {
       if (listening) { recog.stop(); return; }
+      window.speechSynthesis && window.speechSynthesis.cancel();
       recog.start();
     });
 
     recog.addEventListener("start", () => {
       listening = true;
       mic.textContent = "Stop";
-      status.className = "status";
+      mic.classList.add("listening");
       status.textContent = "Listening…";
     });
 
     recog.addEventListener("result", (e) => {
       const said = e.results[0][0].transcript;
-      entry.value = entry.value ? entry.value + " " + said : said;
-      status.textContent = "Got it. Edit if needed, then save.";
+      status.textContent = "";
+      send(said);
     });
 
     recog.addEventListener("error", (e) => {
-      status.className = "status error";
       status.textContent = "Mic error: " + e.error;
     });
 
     recog.addEventListener("end", () => {
       listening = false;
       mic.textContent = "Speak";
+      mic.classList.remove("listening");
+      if (status.textContent === "Listening…") status.textContent = "";
     });
   }
+
+  addBubble("What did you buy, or what are you thinking of buying?", "bot");
 </script>
 </body>
 </html>
